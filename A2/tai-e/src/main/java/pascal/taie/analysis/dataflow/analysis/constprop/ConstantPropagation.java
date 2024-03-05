@@ -57,18 +57,25 @@ public class ConstantPropagation extends
     @Override
     public CPFact newBoundaryFact(CFG<Stmt> cfg) {
         // TODO - finish me
-        return null;
+        CPFact boundaryFact = newInitialFact();
+        cfg.getIR().getParams()
+                .stream()
+                .filter(ConstantPropagation::canHoldInt)
+                .forEach(p-> boundaryFact.update(p,Value.getNAC()));
+        return boundaryFact;
     }
 
     @Override
     public CPFact newInitialFact() {
         // TODO - finish me
-        return null;
+        return new CPFact();
     }
 
     @Override
     public void meetInto(CPFact fact, CPFact target) {
         // TODO - finish me
+        fact.forEach(((var, value) ->
+                target.update(var,meetValue(value,target.get(var)))));
     }
 
     /**
