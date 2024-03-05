@@ -25,6 +25,11 @@ package pascal.taie.analysis.dataflow.solver;
 import pascal.taie.analysis.dataflow.analysis.DataflowAnalysis;
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.cfg.CFG;
+import pascal.taie.analysis.graph.cfg.Edge;
+import pascal.taie.util.collection.CollectionUtils;
+import pascal.taie.util.collection.Sets;
+
+import java.util.*;
 
 class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
 
@@ -35,6 +40,43 @@ class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
     @Override
     protected void doSolveForward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+        ArrayList<Node> worklist = new ArrayList<>();
+        cfg.forEach(node -> {
+            if(!cfg.isEntry(node)){
+                worklist.add(node);
+            }
+        });
+        while (!worklist.isEmpty()){
+            Node node = worklist.remove(0);
+            Fact in;
+            int inDegree = cfg.getInDegreeOf(node);
+            if (inDegree>1){
+                in = result.getInFact(node);
+                cfg.getInEdgesOf(node).forEach(inEdge->{
+                    Fact fact = result.getOutFact(inEdge.getSource());
+                    if(analysis.needTransferEdge(inEdge)){
+                        fact = analysis.transferEdge(inEdge,fact);
+                    }
+                    analysis.meetInto(fact,in);
+                });
+            } else if (inDegree==1) {
+                Edge<Node>inEdge = CollectionUtils.getOne(cfg.getInEdgesOf(node));
+                if(analysis.needTransferEdge(inEdge)){
+                    in = analysis.transferEdge(inEdge,
+                            result.getOutFact(inEdge.getSource()));
+                    result.setInFact(node,in);
+                }else {
+                    in = result.getInFact(node);
+                }
+            }else {
+                in = result.getInFact(node);
+            }
+            Fact out = result.getOutFact(node);
+            boolean changed = analysis.transferNode(node,in,out);
+            if(changed){
+                worklist.addAll(cfg.getSuccsOf(node));
+            }
+        }
     }
 
     @Override
